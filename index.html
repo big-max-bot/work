@@ -1,0 +1,150 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>心理学实验</title>
+    <!-- 引用 jsPsych 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/jspsych.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-keyboard-response.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-button-response.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-survey-html-form.js"></script>
+    <!-- 引用外部 CSS 文件 -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="jspsych-target"></div>
+    <script>
+        // 欢迎页
+        var welcome = {
+            type: 'html-button-response',
+            stimulus: `
+                <div class="center-content">
+                    <h1>欢迎参加我们的心理学实验</h1>
+                    <p>我们正在进行一项研究，希望您能参与其中。实验过程很简单，请按照屏幕上的指示进行操作。</p>
+                    <p>点击下方的按钮开始实验。</p>
+                </div>
+            `,
+            choices: ['开始实验']
+        };
+
+        // 注意瞬脱实验的指示页
+        var instructions = {
+            type: 'html-keyboard-response',
+            stimulus: `
+                <div class="center-content">
+                    <h2>注意瞬脱实验指导</h2>
+                    <p>在接下来的实验中，您将看到一系列的刺激。请按照以下指示操作：</p>
+                    <ul>
+                        <li>当屏幕上显示一个特定的目标刺激（数字）时，请迅速按下空格键。</li>
+                        <li>其他干扰刺激（字母）不会要求回应。</li>
+                        <li>每个刺激会持续出现50毫秒，然后消失，接着会有一个短暂的间隔。</li>
+                        <li>请尽量保持专注，并快速准确地响应目标刺激。</li>
+                    </ul>
+                    <p>按下任意键开始实验。</p>
+                </div>
+            `
+        };
+
+        // 创建 Lag 条件的实验
+        function createLagExperiment(lag) {
+            var allTrials = [];
+            var targetCount = 5; // 每个实验中包含的目标刺激数量
+            
+            for (var i = 0; i < targetCount; i++) {
+                var targetStimulus = Math.floor(Math.random() * 10).toString();
+
+                // 添加干扰刺激
+                for (var j = 0; j < lag; j++) {
+                    allTrials.push({
+                        type: 'html-keyboard-response',
+                        stimulus: `<div style="font-size: 48px;">${String.fromCharCode(65 + Math.floor(Math.random() * 26))}</div>`,
+                        choices: jsPsych.NO_KEYS,
+                        trial_duration: 50
+                    });
+                }
+
+                // 添加目标刺激
+                allTrials.push({
+                    type: 'html-keyboard-response',
+                    stimulus: `<div style="font-size: 48px;">${targetStimulus}</div>`,
+                    choices: [' '],
+                    trial_duration: 50,
+                    data: { isTarget: true, target: targetStimulus }
+                });
+            }
+
+            return allTrials;
+        }
+
+        // 反馈问卷
+        var feedback = {
+            type: 'survey-html-form',
+            html: `
+                <div class="center-content">
+                    <h3>请填写您看到的数字</h3>
+                    <p>请在下方输入您刚才看到的第一个和第二个数字。</p>
+                    <form id="feedback-form">
+                        <label>第一个数字:
+                            <input type="text" name="first_number" required />
+                        </label><br/>
+                        <label>第二个数字:
+                            <input type="text" name="second_number" required />
+                        </label><br/>
+                        <button type="submit">提交</button>
+                    </form>
+                </div>
+            `,
+            button_label: '提交',
+            on_finish: function(data) {
+                var response = jsPsych.data.get().values().pop().responses;
+                jsPsych.data.addProperties({ feedback_response: response });
+            }
+        };
+
+        // Lag 实验条件
+        var lags = [1, 4, 9];
+        var trialsPerLag = 5;
+        var allExperiments = [];
+
+        lags.forEach(function(lag) {
+            for (var i = 0; i < trialsPerLag; i++) {
+                var lagExperiment = createLagExperiment(lag);
+                allExperiments.push({
+                    timeline: lagExperiment.concat([feedback])
+                });
+            }
+        });
+
+        var attentionTask = {
+            timeline: allExperiments
+        };
+
+        // 结束语页
+        var ending = {
+            type: 'html-button-response',
+            stimulus: `
+                <div class="center-content">
+                    <h2>实验结束</h2>
+                    <p>感谢您参加我们的实验。您的参与对我们非常重要。</p>
+                    <p>点击下方按钮结束实验。</p>
+                </div>
+            `,
+            choices: ['结束实验'],
+            on_finish: function() {
+                console.log('实验结束，感谢参与！');
+            }
+        };
+
+        // 实验的整体结构
+        jsPsych.init({
+            timeline: [welcome, instructions, attentionTask, ending],
+            display_element: 'jspsych-target',
+            on_finish: function() {
+                jsPsych.data.displayData();
+            }
+        });
+    </script>
+</body>
+</html>
